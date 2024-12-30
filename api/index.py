@@ -203,9 +203,6 @@ def anime_search(query:str):
 
 
 app = Flask(__name__)
-CORS(app, resources={
-    r"/api/*": {"origins": "https://s3embtaku.pro"}
-})
 
 @app.route('/')
 def home():
