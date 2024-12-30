@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watch {{ series_name }} - Streaming</title>
+    <script type="text/javascript" src="https://s3embtaku.pro/js/jw8.33/jwplayer.js?v=11.0"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            color: white;
+            text-align: center;
+            background: rgb(2,0,36);
+            background: linear-gradient(90deg, rgba(2,0,36,1) 0%, rgba(121,9,28,1) 37%, rgba(0,35,255,1) 100%);
+        }
+
+        h1 {
+            margin-top: 20px;
+        }
+
+        .video-container {
+            margin: 20px auto;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        #player {
+            width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .dropdown-container {
+            margin: 20px;
+        }
+
+        .episodes-container {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            padding: 20px;
+            justify-content: center;
+        }
+
+        .episode-button {
+            padding: 10px;
+            background-color: #282828;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        .episode-button:hover {
+            background-color: #ff6600;
+        }
+
+        @media (max-width: 768px) {
+            .episodes-container {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .episodes-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1 id="anime-title">Watch {{ series_name }}</h1>
+
+    <!-- Season dropdown -->
+    <div class="dropdown-container">
+        <label for="season-select">Select Season:</label>
+        <select id="season-select" onchange="updateEpisodes()"></select>
+    </div>
+
+    <!-- Episodes container -->
+    <div id="episodes-container"></div>
+
+    <!-- Video player -->
+    <div class="video-container">
+        <div id="player"></div>
+    </div>
+
+    <script>
+        // Global data passed from the backend
+        const seriesData = {{ series_data | tojson }};
+
+        // Populate seasons and initialize episodes
+        function initializePage() {
+            const seasonSelect = document.getElementById('season-select');
+            const seasons = Object.keys(seriesData.seasons);
+
+            // Add options to season dropdown
+            seasons.forEach(season => {
+                const option = document.createElement('option');
+                option.value = season;
+                option.textContent = `Season ${season}`;
+                seasonSelect.appendChild(option);
+            });
+
+            // Initialize episodes for the first season
+            updateEpisodes();
+        }
+
+        // Update episodes based on selected season
+        function updateEpisodes() {
+            const seasonSelect = document.getElementById('season-select');
+            const season = seasonSelect.value;
+            const episodes = seriesData.seasons[season];
+            const container = document.getElementById('episodes-container');
+            container.innerHTML = ''; // Clear previous episodes
+
+            episodes.forEach(episode => {
+                const button = document.createElement('button');
+                button.className = 'episode-button';
+                button.innerText = `Episode ${episode}`;
+                button.onclick = () => loadEpisode(seriesData.tmdb_id, season, episode);
+                container.appendChild(button);
+            });
+        }
+
+        // Load episode into the JW Player
+        function loadEpisode(tmdbId, season, episode) {
+            fetch(`/api/get_streaming_link?tmdb=${tmdbId}&season=${season}&episode=${episode}`)
+                .then(response => response.json())
+                .then(data => {
+                    const videoSrc = data.streaming_link;
+		    const sub = data.sub;
+                    // Set up JW Player
+                    jwplayer("player").setup({
+                        file: videoSrc,
+			tracks:[
+				{
+					file: sub,
+					kind: "captions",
+					label: "English",
+					default: true
+				}
+			],
+                        width: "100%",
+                        aspectratio: "16:9"
+                    });
+
+                    // Update the title
+                    document.getElementById('anime-title').innerText = 
+                        `Watch {{ series_name }} - Season ${season}, Episode ${episode}`;
+                })
+                .catch(error => console.error('Error fetching stream:', error));
+        }
+
+        // Initialize the page on load
+        document.addEventListener('DOMContentLoaded', initializePage);
+    </script>
+
+</body>
+</html>
+

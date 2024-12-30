@@ -14,11 +14,33 @@ POP_MAIN_URL:str ="https://popcornmovies.to"
 ANIME_URL:str ="https://allanime.day"
 ANIME_REF:str = "https://allmanga.to"
 ANIME_API:str = "https://api.allanime.day"
-AUTO_EMBED:str = "https://tom.autoembed.cc"
+AUTO_CDN:str = "https://tom.autoembed.cc"
 
 
 #streaming stuff
+def autoembed_scrapper(url:str,headers:dict)->str:
+    r = httpx.get(
+        url,
+        headers=headers,
+        timeout=None
+    )
 
+    if r.status_code == 200:
+        data = r.json()
+        streaming_link = data.get("videoSource",None)
+        subtitle = next((s['file'] for s in data.get('subtitles', []) if "English" in s['label']), None)
+
+        return streaming_link,subtitle
+
+def get_tmdb(url:str)->str:
+    r = httpx.get(
+            url,
+            headers={"User-Agent":USER_AGENT},
+            timeout=None
+            )
+    tmdb = re.findall(r'\s+tmdbId:\s+&#039;(\d+)&#039;',r.text)[0]
+
+    return tmdb
 
 def anime_episode(id:str)->list:
     episodes_list_gql = """
@@ -233,9 +255,43 @@ def send_data():
     media_type = request.args.get('mediaType')
     media_name = request.args.get('media_name')
     if media_type == "movie":
-        pass
+        tmdb_id = get_tmdb(url=link)
+        auto_url = f"{AUTO_CDN}/api/getVideoSource?type=movie&id={tmdb_id}"
+        auto_headers = {"Referer": f"{AUTO_CDN}/movie/{tmdb_id}", "User-Agent" : USER_AGENT}
+
+        streaming_link,subtitle = autoembed_scrapper(url=auto_url,headers=auto_headers)
+        
+        if not streaming_link:
+            return "<p>Sorry no streaminng link available</p>"
+        
+
+        return render_template("movie.html",streaming_link=streaming_link,sub_url=subtitle,movie_name = media_name)
+
     elif media_type == "tv":
-        pass
+        tv_link = link.replace("/tv-show/","/episode/")
+        tv_link += '/1-1'
+        series_data = {"seasons":{}}
+
+        tmdb_id = get_tmdb(url=tv_link)
+        #gather episode data
+        r = httpx.get(
+                f"https://api.tmdb.org/3/tv/{tmdb_id}?append_to_response=external_ids",
+                headers={
+                    "Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmYWNkMmE1YWE0YmMwMzAyZjNhZmRlYTIwZGQ2YWRhZSIsInN1YiI6IjY1OTEyNjU1NjUxZmNmNWYxMzhlMWRjNyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.5boG-w-nlk-SWB8hvFeWq_DNRbrU6n5XEXleVQ1L1Sg",
+                    "User-Agent" : USER_AGENT
+                    },
+                timeout=None
+                )
+
+        seasons = r.json()["seasons"]
+        for s in seasons:
+            if s['season_number'] != 0:
+                series_data['seasons'][s['season_number']] = list(range(1,int(s['episode_count']+1)))
+
+        series_data["tmdb_id"] = tmdb_id
+        return render_template("series.html",series_name=media_name,series_data=series_data)
+
+
     else:
         episode_list = anime_episode(link)
 
@@ -243,6 +299,26 @@ def send_data():
         streaming_link = anime_scrapper(link,1) 
         #print(streaming_link)
         return render_template("anime.html",episodes=episode_list,anime_id=link,anime_name=media_name,streming_link=streaming_link)
+
+
+@app.route('/api/get_streaming_link')
+def get_tv_stream():
+    tmdb_id = request.args.get('tmdb')
+    season = request.args.get('season')
+    episode = request.args.get('episode')
+    
+    #print("I got called")
+
+    auto_url = f"{AUTO_CDN}/api/getVideoSource?type=tv&id={tmdb_id}/{season}/{episode}"
+    auto_headers = {"Referer": f"{AUTO_CDN}/tv/{tmdb_id}/{season}/{episode}", "User-Agent" : USER_AGENT}
+
+    streaming_link,sub = autoembed_scrapper(url=auto_url,headers=auto_headers)
+
+    if not streaming_link:
+        return "<p>Sorry no streaming link found for this series</p>"
+
+    return jsonify({"streaming_link": streaming_link, "sub" : sub})
+
 
 
 @app.route('/api/get_anime_stream_link')
@@ -254,7 +330,3 @@ def get_anime_stream():
     #print(streaming_link)
 
     return jsonify({"streaming_link" : streaming_link})
-
-#if __name__ == '__main__':
-#    app.run(host='0.0.0.0',port=8888,debug=True)
-#
