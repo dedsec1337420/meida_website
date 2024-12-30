@@ -225,6 +225,7 @@ def anime_search(query:str):
 
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'thiadgysgfwefbwhefweyfgwyefgwyegwuynsdcjsn'
 
 @app.route('/')
 def home():
