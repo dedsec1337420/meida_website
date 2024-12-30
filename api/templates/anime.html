@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watch {{ anime_name }} - Streaming</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            color: white;
+            text-align: center;
+            background: rgb(2,0,36);
+            background: linear-gradient(90deg, rgba(2,0,36,1) 0%, rgba(121,9,28,1) 37%, rgba(0,35,255,1) 100%);
+        }
+
+        h1 {
+            margin-top: 20px;
+        }
+
+        /* Video player container */
+        .video-container {
+            margin: 20px auto;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Episodes grid */
+        .episodes-container {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr); /* 6 columns for desktop */
+            gap: 10px;
+            padding: 20px;
+            justify-content: center;
+        }
+
+        .episode-button {
+            padding: 10px;
+            background-color: #282828;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        .episode-button:hover {
+            background-color: #ff6600; /* Hover effect */
+        }
+
+        /* Responsive layout for mobile */
+        @media (max-width: 768px) {
+            .episodes-container {
+                grid-template-columns: repeat(4, 1fr); /* 2 columns for mobile */
+            }
+        }
+
+        @media (max-width: 480px) {
+            .episodes-container {
+                grid-template-columns: repeat(4, 1fr); /* 1 column for extra small devices */
+            }
+        }
+    </style>
+    <!-- Include hls.js -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+
+    <!-- Anime title -->
+    <h1 id="anime-title">Watch {{ anime_name }} - Episode 1</h1>
+
+    <!-- Video player -->
+    <div class="video-container">
+        <video id="video-player" controls></video>
+    </div>
+
+    <!-- Episodes grid layout -->
+    <div class="episodes-container">
+        {% for ep_number in episodes %}
+        <button class="episode-button" onclick="loadEpisode('{{ anime_id }}', '{{ anime_name }}', '{{ ep_number }}')">
+            Episode {{ ep_number }}
+        </button>
+        {% endfor %}
+    </div>
+
+    <script>
+        // Function to load and play the HLS stream
+        function loadEpisode(animeId, animeName, episodeNumber) {
+            fetch(`/api/get_anime_stream_link?id=${animeId}&ep=${episodeNumber}`)
+            .then(response => response.json())
+            .then(data => {
+                const video = document.getElementById('video-player');
+                const videoSrc = data.streaming_link;
+
+                if (Hls.isSupported()) {
+                    const hls = new Hls();
+                    hls.loadSource(videoSrc);
+                    hls.attachMedia(video);
+                    hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                        video.play();
+                    });
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    video.src = videoSrc;
+                    video.play();
+                }
+
+                document.getElementById('anime-title').innerText = `Watch ${animeName} - Episode ${episodeNumber}`;
+            })
+            .catch(error => console.error('Error fetching episode:', error));
+        }
+
+        // Load the first episode on page load (optional)
+        document.addEventListener('DOMContentLoaded', function() {
+            loadEpisode('{{ anime_id }}', '{{ anime_name }}', 1);
+        });
+    </script>
+
+</body>
+</html>

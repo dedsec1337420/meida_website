@@ -8,8 +8,8 @@
         body {
             margin: 0;
             font-family: Arial, sans-serif;
-            background-color: #2c003e; /* Dark purple */
-            color: #fff;
+             background: rgb(63,94,251);
+	     background: radial-gradient(circle, rgba(63,94,251,1) 18%, rgba(252,70,107,1) 81%); 
             padding: 20px;
         }
 
@@ -42,18 +42,37 @@
         }
     </style>
     <script>
-        function handleClick(link, mediaType) {
-            alert(`Link: ${link}, Media Type: ${mediaType}`);
+        async function handleClick(link, mediaType,media_name) {
+            try {
+                const response = await fetch('/api/send_media', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ link, mediaType, media_name })
+                });
+
+                if (response.ok) {
+                    console.log('Data sent successfully');
+                } else {
+                    console.error('Failed to send data');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
         }
+
     </script>
 </head>
 <body>
     <h1>Search Results</h1>
     <div class="results-container">
         {% for link, thumbnail, media_name in results %}
-        <div class="result-card" onclick="handleClick('{{ link }}', '{{ media_type }}')">
-            <img src="{{ thumbnail }}" alt="{{ media_name }}">
-            <p>{{ media_name }}</p>
+	<div class="result-card">
+		<a href="/api/send_media?link={{ link }}&mediaType={{ media_type }}&media_name={{ media_name }}">
+            		<img src="{{ thumbnail }}" alt="{{ media_name }}">
+            		<p>{{ media_name }}</p>
+		</a>
         </div>
         {% endfor %}
     </div>
