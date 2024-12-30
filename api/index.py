@@ -6,7 +6,6 @@ import re
 import json
 from base64 import b64decode
 from base64 import b64encode
-from Cryptodome.Cipher import AES
 
 #global shit
 USER_AGENT:str = 'Mozilla/5.0 (X11; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0'
@@ -53,16 +52,11 @@ def anime_episode(id:str)->list:
     return ep_count if len(ep_count) > 0 else None
 
 def anime_scrapper(id:str,episode:str)->str:
-    s=b'37911490979715163134003223491201'
-    s_2 = b'54674138327930866480207815084989'
-    iv= b'3134003223491201'
-    
-
-    def pad(data):
-        return data + chr(len(data) %16)*(16 - len(data) %16)
-
-    def decrypt(key,data):
-        return AES.new(key,AES.MODE_CBC,iv=iv).decrypt(b64decode(data))
+    def dec_link(enc_link)->str:
+        decrypted = bytearray()
+        for segment in bytearray.fromhex(enc_link):
+            decrypted.append(segment ^ 56)
+        return decrypted.decode("utf-8")
 
     episode_embed_gql = """
     query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) {
@@ -100,43 +94,30 @@ def anime_scrapper(id:str,episode:str)->str:
     
 
     if r.status_code == 200:
-        host,slug  = re.findall(r'"sourceUrl":"https://(.*?)/streaming\.php\?(id=.*?)"',r.text)[0]
+        #print(r.json())
+        
+        for i in r.json()["data"]["episode"]["sourceUrls"]:
+            if i['sourceName'] == 'S-mp4':
+                smp4_encrypted_link = i['sourceUrl'][2:]
+
+
+        #smp4_encrypted_link = re.findall(r'"sourceUrl":"--(.*?)","priority":.*?,"sourceName":"S-mp4"',r.text)[0]
+        #print(smp4_encrypted_link)
+        smp4_link = dec_link(smp4_encrypted_link)
+        #print(smp4_link)
         r = httpx.get(
-                    f"https://{host}/streaming.php?{slug}",
-                    headers={
-                        "User-Agent" : USER_AGENT
-
-                        },
-                    timeout=None
+                f"{ANIME_URL}{smp4_link.replace('clock', 'clock.json')}",
+                headers={
+                    "User-Agent" : USER_AGENT,
+                    "Referer" : ANIME_REF
+                    }
                 )
-        #extract crypto value
-        crypto_value = re.findall(r'data-value="(.*?)"',r.text)[0]
+        link = r.json()["links"][0]["link"]
 
-        decrypted_crypto_value = decrypt(s,crypto_value).strip(b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f\x10").decode()
-        #print(decrypted_crypto_value)
-        media_id = decrypted_crypto_value.split('&')[0]
-        media_slug = decrypted_crypto_value[len(media_id):]
+        #print(link)
 
-        encrypted_media_id = b64encode(
-                AES.new(s,AES.MODE_CBC,iv=iv).encrypt(
-                    pad(media_id).encode()
-                    )
-
-                ) 
-
-        r = httpx.get(
-                    f"https://{host}/encrypt-ajax.php?id={encrypted_media_id.decode()}{media_slug}&alias={media_id}",
-                    headers={
-                        "User-Agent" : USER_AGENT,
-                        "X-Requested-With": "XMLHttpRequest"
-                        },
-                    timeout=None
-                )
-        j = json.loads(
-                decrypt(s_2,r.json().get("data")).strip(b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f\x10")
-                )
-
-        return j['source'][0]['file']
+       
+        return link
 
 
 
@@ -222,6 +203,9 @@ def anime_search(query:str):
 
 
 app = Flask(__name__)
+CORS(app, resources={
+    r"/api/*": {"origins": "https://s3embtaku.pro"}
+})
 
 @app.route('/')
 def home():
@@ -273,7 +257,6 @@ def get_anime_stream():
     #print(streaming_link)
 
     return jsonify({"streaming_link" : streaming_link})
-
 
 #if __name__ == '__main__':
 #    app.run(host='0.0.0.0',port=8888,debug=True)

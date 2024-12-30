@@ -26,7 +26,7 @@
             width: 100%;
         }
 
-        video {
+        #player {
             width: 100%;
             height: auto;
             border-radius: 10px;
@@ -70,8 +70,8 @@
             }
         }
     </style>
-    <!-- Include hls.js -->
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <!-- Include JW Player -->
+    <script type="text/javascript" src="https://s3embtaku.pro/js/jw8.33/jwplayer.js?v=11.0"></script>
 </head>
 <body>
 
@@ -80,7 +80,7 @@
 
     <!-- Video player -->
     <div class="video-container">
-        <video id="video-player" controls></video>
+        <div id="player"></div>
     </div>
 
     <!-- Episodes grid layout -->
@@ -93,25 +93,23 @@
     </div>
 
     <script>
-        // Function to load and play the HLS stream
+        // Function to load and play the video using JW Player
         function loadEpisode(animeId, animeName, episodeNumber) {
             fetch(`/api/get_anime_stream_link?id=${animeId}&ep=${episodeNumber}`)
             .then(response => response.json())
             .then(data => {
-                const video = document.getElementById('video-player');
                 const videoSrc = data.streaming_link;
 
-                if (Hls.isSupported()) {
-                    const hls = new Hls();
-                    hls.loadSource(videoSrc);
-                    hls.attachMedia(video);
-                    hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                        video.play();
-                    });
-                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                    video.src = videoSrc;
-                    video.play();
-                }
+                jwplayer("player").setup({
+                    file: videoSrc,
+		    type: "mp4",
+                    width: "100%",
+                    height: "100%",
+                    aspectratio: "16:9",
+                    autostart: false,
+                    controls: true,
+                    preload: "auto",
+                });
 
                 document.getElementById('anime-title').innerText = `Watch ${animeName} - Episode ${episodeNumber}`;
             })
@@ -126,3 +124,4 @@
 
 </body>
 </html>
+

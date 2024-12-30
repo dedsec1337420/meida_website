@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JW Player Demo</title>
+    <script type="text/javascript" src="https://s3embtaku.pro/js/jw8.33/jwplayer.js?v=11.0"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #2c003e; /* Dark purple */
+            color: #fff;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #player {
+            width: 640px;
+            height: 360px;
+        }
+    </style>
+</head>
+<body>
+    <div id="player"></div>
+
+    <script>
+        // Initialize JW Player
+        jwplayer("player").setup({
+            file: "https://myanime.sharepoint.com/sites/anime2/_layouts/15/download.aspx?share=EZVMAgf5355PninFTN7O-DoBf-fx05173iIf0nbOMDEunw",// Your video URL
+	   // onXhrOpen: function(xhr, url) {xhr.setRequestHeader('Referer', 'https://s3embtaku.pro/');},
+            type: "mp4", // Specify HLS stream
+            width: "640",
+            height: "360",
+            aspectratio: "16:9",
+            autostart: false,
+            controls: true,
+            preload: "auto",
+        });
+    </script>
+</body>
+</html>
+
