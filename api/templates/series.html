@@ -40,7 +40,7 @@
         .episodes-container {
             display: grid;
             grid-template-columns: repeat(6, 1fr);
-            gap: 10px;
+            gap: 15px; /* Added gap between buttons */
             padding: 20px;
             justify-content: center;
         }
@@ -77,6 +77,11 @@
 
     <h1 id="anime-title">Watch {{ series_name }}</h1>
 
+    <!-- Video player -->
+    <div class="video-container">
+        <div id="player"></div>
+    </div>
+
     <!-- Season dropdown -->
     <div class="dropdown-container">
         <label for="season-select">Select Season:</label>
@@ -85,11 +90,6 @@
 
     <!-- Episodes container -->
     <div id="episodes-container"></div>
-
-    <!-- Video player -->
-    <div class="video-container">
-        <div id="player"></div>
-    </div>
 
     <script>
         // Global data passed from the backend
@@ -135,21 +135,21 @@
                 .then(response => response.json())
                 .then(data => {
                     const videoSrc = data.streaming_link;
-		    const sub = data.sub;
+                    const sub = data.sub;
                     // Set up JW Player
                     jwplayer("player").setup({
                         file: videoSrc,
-			tracks:[
-				{
-					file: sub,
-					kind: "captions",
-					label: "English",
-					default: true
-				}
-			],
+                        tracks:[
+                            {
+                                file: sub,
+                                kind: "captions",
+                                label: "English",
+                                default: true
+                            }
+                        ],
                         width: "100%",
                         aspectratio: "16:9",
-			cast : {}
+                        cast: {}
                     });
 
                     // Update the title
